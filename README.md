@@ -8,6 +8,9 @@ A chat application with a React frontend and FastAPI backend.
 odin-ai/
 ├── backend/          # FastAPI Python backend
 │   ├── main.py       # Chat API
+│   ├── database.py   # PostgreSQL connection
+│   ├── models.py     # SQLAlchemy models
+│   ├── alembic/      # Database migrations
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/         # React + Vite frontend
@@ -26,6 +29,10 @@ odin-ai/
 |-----------|-----------|----------------------------|
 | fastapi   | ≥0.115.0  | Web framework              |
 | uvicorn   | ≥0.32.0   | ASGI server                |
+| sqlalchemy| ≥2.0.0    | ORM & database toolkit     |
+| asyncpg   | ≥0.29.0   | Async PostgreSQL driver    |
+| alembic   | ≥1.13.0   | Database migrations        |
+| psycopg2-binary | ≥2.9.9 | Sync PostgreSQL (for migrations) |
 
 ### Frontend (Node.js)
 
@@ -61,15 +68,26 @@ odin-ai/
    docker compose up --build
    ```
 
+   Migrations run automatically when the backend starts. To run manually:
+   ```bash
+   docker compose exec backend alembic upgrade head
+   ```
+
 3. Open:
    - **Chat app**: http://localhost:5173
    - **API docs**: http://localhost:8000/docs
+   - **Health** (incl. DB status): http://localhost:8000/health
 
-Both services support hot reload—edit files and changes apply without restarting.
+Services: PostgreSQL (port 5432), backend (8000), frontend (5173). All support hot reload.
 
 ---
 
 ### Option 2: Local development
+
+**PostgreSQL** must be running. Either:
+
+- Start only the database with Docker: `docker compose up -d db`
+- Or use a local PostgreSQL instance (create database `odin_ai`, user `odin`, password `odin`)
 
 #### Backend
 
@@ -85,13 +103,24 @@ Both services support hot reload—edit files and changes apply without restarti
    pip install -r requirements.txt
    ```
 
-3. Run the server:
+3. Set the database URL (if not using defaults):
+   ```bash
+   export DATABASE_URL=postgresql+asyncpg://odin:odin@localhost:5432/odin_ai
+   ```
+
+4. Run migrations:
+   ```bash
+   alembic upgrade head
+   ```
+
+5. Run the server:
    ```bash
    uvicorn main:app --reload
    ```
 
    - API: http://127.0.0.1:8000  
    - API docs: http://127.0.0.1:8000/docs  
+   - Health: http://127.0.0.1:8000/health  
 
 #### Frontend
 
@@ -130,7 +159,8 @@ cd frontend && npm run dev
 
 | Endpoint   | Method | Description                |
 |------------|--------|----------------------------|
-| `/chat`    | POST   | Send a message and get a response |
+| `/chat`    | POST   | Send a message and get a response (stored in PostgreSQL) |
+| `/health`  | GET    | Health check and database connectivity |
 | `/docs`    | GET    | Interactive API documentation     |
 
 **Example:**
@@ -139,3 +169,29 @@ curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello"}'
 ```
+
+---
+
+## Database migrations (Alembic)
+
+Schema changes are managed with [Alembic](https://alembic.sqlalchemy.org/).
+
+**Apply migrations:**
+```bash
+cd backend
+alembic upgrade head
+```
+
+**Create a new migration (after changing models):**
+```bash
+cd backend
+alembic revision --autogenerate -m "describe your change"
+alembic upgrade head
+```
+
+**Rollback one revision:**
+```bash
+alembic downgrade -1
+```
+
+Uses `DATABASE_URL` (async URL is converted to sync for migrations).
