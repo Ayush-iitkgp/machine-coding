@@ -27,8 +27,7 @@ services:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql+asyncpg://odin:odin@db:5432/odin_ai
     depends_on:
-      db:
-        condition: service_healthy
+      - db
 
   frontend:
     build:
