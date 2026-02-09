@@ -102,6 +102,21 @@ cd frontend && npm run dev
 
 ---
 
+## Docker (with hot reload)
+
+Run both frontend and backend with hot reload using Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+- **Frontend**: http://localhost:5173 (Vite dev server with HMR)
+- **Backend**: http://localhost:8000 (FastAPI with uvicorn --reload)
+
+Edit files in `backend/` or `frontend/`—changes are picked up automatically.
+
+---
+
 ## Screenshots Checklist for Interview Submission
 
 - [ ] **FastAPI**: Terminal showing `uvicorn` running + browser showing `/docs` (Swagger UI)
