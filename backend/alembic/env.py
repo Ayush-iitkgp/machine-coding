@@ -7,7 +7,7 @@ from sqlalchemy import pool
 
 # Import Base and models so metadata is available for autogenerate
 from database import Base
-from models import ChatMessage  # noqa: F401
+from models.chat import ChatMessage  # noqa: F401 - registers with Base.metadata
 
 config = context.config
 

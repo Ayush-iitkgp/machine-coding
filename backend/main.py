@@ -1,18 +1,11 @@
 """FastAPI application - Chat backend for Odin AI."""
 from contextlib import asynccontextmanager
-
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.responses import JSONResponse
 
-from database import check_db_connection, get_db, init_db
-from models import ChatMessage  # noqa: F401 - registers model with Base.metadata for init_db
-from schema import ChatRequest, ChatResponse
-
-_resp = (
-    "You said: \"{message}\"\n\n"
-    "Odin AI received your message. (This is a placeholder response—you can connect an LLM here.)"
-)
+from database import init_db
+from routers import chat, health
 
 
 @asynccontextmanager
@@ -20,7 +13,6 @@ async def lifespan(app: FastAPI):
     """Initialize database on startup."""
     await init_db()
     yield
-    # Shutdown logic if needed
 
 
 app = FastAPI(title="Odin AI", lifespan=lifespan)
@@ -34,19 +26,17 @@ app.add_middleware(
 )
 
 
-@app.get("/health")
-async def health():
-    """Health check including database connectivity."""
-    db_ok = await check_db_connection()
-    return {"status": "healthy", "database": "connected" if db_ok else "disconnected"}
+@app.exception_handler(HTTPException)
+async def http_exception_handler(
+    request: Request,
+    exc: HTTPException,
+) -> JSONResponse:
+    """Return consistent error format for HTTPExceptions."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 
-@app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
-    """Process a chat message and return a response."""
-    message = request.message.strip()
-    if not message:
-        return ChatResponse(response="Please send a message.")
-    response_text = _resp.format(message=message)
-    db.add(ChatMessage(message=message, response=response_text))
-    return ChatResponse(response=response_text)
+app.include_router(health.router)
+app.include_router(chat.router)

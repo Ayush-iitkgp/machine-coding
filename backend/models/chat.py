@@ -1,4 +1,4 @@
-"""SQLAlchemy models."""
+"""Chat-related database models."""
 from sqlalchemy import Column, DateTime, Integer, Text, func
 
 from database import Base
