@@ -3,11 +3,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import check_db_connection, get_db, init_db
 from models import ChatMessage  # noqa: F401 - registers model with Base.metadata for init_db
+from schema import ChatRequest, ChatResponse
 
 _resp = (
     "You said: \"{message}\"\n\n"
@@ -32,14 +32,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-class ChatRequest(BaseModel):
-    message: str
-
-
-class ChatResponse(BaseModel):
-    response: str
 
 
 @app.get("/health")
