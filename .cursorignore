@@ -1,2 +1,18 @@
 *.csv
+
+# Python
+backend/venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Node
 frontend/node_modules/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
