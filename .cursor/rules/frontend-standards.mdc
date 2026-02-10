@@ -1,0 +1,25 @@
+---
+description: Rules for React 19, Vite 7, and Node 20 frontend development
+globs: frontend/**
+alwaysApply: false
+---
+
+# Frontend Tech Stack
+
+- **Framework:** React 19 (Use new hooks like `useActionState`, `useFormStatus`, and the `use` API)
+- **Build Tool:** Vite 7 (Support for Lightning CSS and optimized HMR)
+- **Runtime:** Node 20
+- **Language:** TypeScript (Strict Mode)
+
+# Coding Standards
+
+- **Components:** Use functional components with the `function` keyword.
+- **React 19 Patterns:** Prefer the new `ref` as a prop pattern over `forwardRef`.
+- **State Management:** Prioritize derived state and use server actions/transitions where applicable.
+- **Styling:** Use Tailwind CSS with a mobile-first approach.
+- **Form Handling:** Use native React 19 `action` attributes with Pydantic-like validation (Zod).
+
+# Directory Structure
+
+- Follow lowercase with dashes: `components/auth-form/`.
+- Export named components: `export function MyComponent() { ... }`.
