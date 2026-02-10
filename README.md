@@ -52,8 +52,10 @@ odin-ai/
 
 **Option B: Docker**
 
-- Docker
+- Docker (or [Colima](https://github.com/abiosoft/colima) on Mac)
 - Docker Compose
+
+> **Colima users:** Set `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock`. If builds fail with "no such host" pulling images, see [docs/DOCKER_TROUBLESHOOTING.md](docs/DOCKER_TROUBLESHOOTING.md).
 
 ---
 
