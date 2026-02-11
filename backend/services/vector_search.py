@@ -1,47 +1,49 @@
-"""Vector search over financial documents using Chroma with Gemini embeddings.
-
-This uses a real in-memory Chroma collection and Gemini embedding function
-to perform semantic similarity search over the financial corpus.
-"""
+"""Vector search over documents using Chroma with Ollama embeddings."""
 from typing import List, Optional
 import os
 
 import chromadb
 from chromadb.config import Settings
 from chromadb.api.types import EmbeddingFunction, Documents, Embeddings
-import google.generativeai as genai
+import httpx
 
 from .chunks import FinancialChunk
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-# Use a model that supports embedContent in the current v1beta API.
-GEMINI_EMBED_MODEL = os.getenv("gemini-embedding-001", "gemini-embedding-001")
-
-if not GEMINI_API_KEY:
-    raise RuntimeError("GEMINI_API_KEY is not configured.")
-
-genai.configure(api_key=GEMINI_API_KEY)
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 
 
-class GeminiEmbeddingFunction(EmbeddingFunction):
-    """Chroma embedding function powered by Gemini."""
+class OllamaEmbeddingFunction(EmbeddingFunction):
+    """Chroma embedding function powered by an Ollama embedding model."""
 
-    def __init__(self, model: str):
+    def __init__(self, base_url: str, model: str) -> None:
+        self._base_url = base_url.rstrip("/")
         self._model = model
 
     def __call__(self, input: Documents) -> Embeddings:  # type: ignore[override]
-        # Chroma passes a list of strings as `input`.
         texts: List[str]
         if isinstance(input, str):
             texts = [input]
         else:
             texts = list(input)
 
-        embeddings: Embeddings = []
-        for text in texts:
-            res = genai.embed_content(model=self._model, content=text)
-            embeddings.append(res["embedding"])
-        return embeddings
+        if not texts:
+            return []
+
+        url = f"{self._base_url}/v1/embeddings"
+        resp = httpx.post(
+            url,
+            json={"model": self._model, "input": texts},
+            timeout=300.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        # Ollama's /v1/embeddings returns {"data": [{"embedding": [...]}, ...], ...}
+        if isinstance(data, dict) and "data" in data:
+            return [item["embedding"] for item in data["data"]]
+
+        raise RuntimeError(f"Unexpected Ollama embeddings response format: {data!r}")
 
 
 # In-memory Chroma client (no persistence on disk).
@@ -53,7 +55,7 @@ _client = chromadb.Client(
 
 _collection = _client.create_collection(
     name="financial_docs",
-    embedding_function=GeminiEmbeddingFunction(GEMINI_EMBED_MODEL),
+    embedding_function=OllamaEmbeddingFunction(OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL),
 )
 
 # Start with an empty collection; only user-uploaded documents are indexed.

@@ -77,6 +77,7 @@ export function ChatApp() {
   const [loading, setLoading] = useState(false)
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
   const [documentId, setDocumentId] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   function handleUploadClick() {
@@ -88,6 +89,7 @@ export function ChatApp() {
     if (file) {
       void (async () => {
         try {
+          setUploading(true)
           const uploaded = await uploadDocument(file)
           setDocumentId(uploaded.document_id)
           setSelectedFileName(file.name)
@@ -103,6 +105,8 @@ export function ChatApp() {
               }`,
             },
           ])
+        } finally {
+          setUploading(false)
         }
       })()
     }
@@ -181,9 +185,15 @@ export function ChatApp() {
         </div>
       </header>
 
+      {uploading && (
+        <div className="flex-shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-200 sm:px-6">
+          Parsing uploaded document, please wait…
+        </div>
+      )}
+
       <ChatMessages messages={messages} loading={loading} />
 
-      <ChatInput onSubmit={handleSubmit} />
+      <ChatInput onSubmit={handleSubmit} disabled={loading || uploading} />
     </div>
   )
 }

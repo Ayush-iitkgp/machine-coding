@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 
 export type RetrievedChunk = {
   id: number
@@ -15,6 +15,9 @@ export type Message = {
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user'
+  const [isExpanded, setIsExpanded] = useState(false)
+  const hasChunks = !isUser && message.retrievedChunks && message.retrievedChunks.length > 0
+
   return (
     <div
       className={`max-w-[85%] rounded-xl px-4 py-3 leading-relaxed ${
@@ -25,22 +28,33 @@ function MessageBubble({ message }: { message: Message }) {
     >
       <div className="whitespace-pre-wrap break-words">{message.content}</div>
 
-      {!isUser && message.retrievedChunks && message.retrievedChunks.length > 0 && (
-        <div className="mt-3 space-y-2 text-xs text-white/80">
-          <div className="font-semibold uppercase tracking-wide text-[0.65rem] text-white/60">
-            Financial data used
-          </div>
-          {message.retrievedChunks.map((chunk) => (
-            <div
-              key={chunk.id}
-              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2"
-            >
-              <div className="mb-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/50">
-                {chunk.document_id} · {chunk.section}
-              </div>
-              <div className="whitespace-pre-wrap break-words">{chunk.content}</div>
+      {hasChunks && (
+        <div className="mt-3 text-xs text-white/80">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[0.65rem] font-medium uppercase tracking-wide text-white/60 transition-colors hover:bg-black/50"
+          >
+            <span>
+              {isExpanded ? '▼' : '▶'} Sources ({message.retrievedChunks!.length})
+            </span>
+          </button>
+
+          {isExpanded && (
+            <div className="mt-2 space-y-2">
+              {message.retrievedChunks!.map((chunk) => (
+                <div
+                  key={chunk.id}
+                  className="rounded-lg border border-white/10 bg-black/30 px-3 py-2"
+                >
+                  <div className="mb-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/50">
+                    {chunk.document_id} · {chunk.section}
+                  </div>
+                  <div className="whitespace-pre-wrap break-words">{chunk.content}</div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

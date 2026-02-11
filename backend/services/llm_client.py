@@ -1,23 +1,25 @@
-"""LLM client for answering questions using retrieved chunks via Gemini.
+"""LLM client router for answering questions using retrieved chunks.
 
-This implementation calls the Gemini Generative Language API and returns both
-the answer text and the concrete chunks that were used so callers can surface
-them to the client.
+Dispatches to provider-specific clients for Llama (Ollama), OpenAI, or Gemini.
+By default, the Llama (Ollama) client is used; override with LLM_PROVIDER.
 """
 from typing import Iterable, List, Tuple
 import os
 
-import google.generativeai as genai
-
 from .chunks import FinancialChunk
+from . import llm_llama_client, llm_openai_client, llm_gemini_client
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "llama").lower()
 
-if not GEMINI_API_KEY:
-    raise RuntimeError("GEMINI_API_KEY is not configured.")
 
-genai.configure(api_key=GEMINI_API_KEY)
+async def _call_llm(prompt: str) -> str:
+    """Call the configured LLM provider with a fully constructed prompt."""
+    if LLM_PROVIDER == "openai":
+        return await llm_openai_client.generate_answer(prompt)
+    if LLM_PROVIDER == "gemini":
+        return await llm_gemini_client.generate_answer(prompt)
+    # Default to Llama/Ollama
+    return await llm_llama_client.generate_answer(prompt)
 
 
 async def answer_question_from_chunks(
@@ -25,23 +27,12 @@ async def answer_question_from_chunks(
     chunks: Iterable[FinancialChunk],
     max_chunks: int = 3,
 ) -> Tuple[str, List[FinancialChunk]]:
-    """Build a prompt from the question and chunks and ask the Gemini model.
-
-    Args:
-        question: The user's question.
-        chunks: Iterable of FinancialChunk instances, typically from vector_search.
-        max_chunks: Maximum number of chunks to include in the context.
-
-    Returns:
-        Tuple of:
-            - answer: string returned by the LLM (or a fallback on failure).
-            - used_chunks: the FinancialChunk objects included in the prompt.
-    """
+    """Build a prompt from the question and chunks and ask the configured LLM."""
     selected: List[FinancialChunk] = list(chunks)[:max_chunks]
 
     if not selected:
         fallback = (
-            "[LLM] I could not find any relevant information in the "
+            "I could not find any relevant information in the "
             "uploaded documents for your question:\n"
             f"\"{question}\""
         )
@@ -64,16 +55,14 @@ async def answer_question_from_chunks(
     )
 
     try:
-        model = genai.GenerativeModel(GEMINI_MODEL)
-        response = model.generate_content(prompt)
-        text = (response.text or "").strip()
-        return text or "[LLM_ERROR] Empty response from Gemini.", selected
+        answer = await _call_llm(prompt)
     except Exception as exc:  # noqa: BLE001
         answer = (
-            "[LLM_ERROR] Failed to call the Gemini API. "
+            "[LLM_ERROR] Failed to call the LLM API. "
             f"Reason: {exc!r}\n\n"
             "Here are the raw excerpts so you can inspect them yourself:\n"
             f"{chr(10).join(context_lines)}"
         )
-        return answer, selected
+
+    return (answer or "[LLM_ERROR] Empty response from LLM."), selected
 
