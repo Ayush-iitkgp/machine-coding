@@ -23,13 +23,15 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./chroma_data:/app/chroma_data
     environment:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql+asyncpg://odin:odin@db:5432/odin_ai
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_EMBED_MODEL=nomic-embed-text
-      - OLLAMA_MODEL=llama3.2:1b
+      - OLLAMA_MODEL=qwen2.5:0.5b
       - LLM_PROVIDER=llama
+      - CHROMA_DB_PATH=/app/chroma_data
       # Set GEMINI_API_KEY and optional GEMINI_MODEL / GEMINI_EMBED_MODEL
       # in your environment or override here for containerized runs.
       # - GEMINI_API_KEY=your_real_gemini_api_key

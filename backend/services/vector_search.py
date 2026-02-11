@@ -11,6 +11,7 @@ from .chunks import FinancialChunk
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./chroma_data")
 
 
 class OllamaEmbeddingFunction(EmbeddingFunction):
@@ -34,7 +35,7 @@ class OllamaEmbeddingFunction(EmbeddingFunction):
         resp = httpx.post(
             url,
             json={"model": self._model, "input": texts},
-            timeout=300.0,
+            timeout=3000.0,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -46,19 +47,20 @@ class OllamaEmbeddingFunction(EmbeddingFunction):
         raise RuntimeError(f"Unexpected Ollama embeddings response format: {data!r}")
 
 
-# In-memory Chroma client (no persistence on disk).
-_client = chromadb.Client(
-    Settings(
+# Persistent Chroma client - data is stored on disk at CHROMA_DB_PATH.
+_client = chromadb.PersistentClient(
+    path=CHROMA_DB_PATH,
+    settings=Settings(
         anonymized_telemetry=False,
-    )
+    ),
 )
 
-_collection = _client.create_collection(
+_collection = _client.get_or_create_collection(
     name="financial_docs",
     embedding_function=OllamaEmbeddingFunction(OLLAMA_BASE_URL, OLLAMA_EMBED_MODEL),
 )
 
-# Start with an empty collection; only user-uploaded documents are indexed.
+# Chunk IDs are assigned sequentially across the lifetime of the collection.
 _next_chunk_id = 1
 
 
