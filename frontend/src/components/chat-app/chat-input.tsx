@@ -9,6 +9,7 @@ function ChatInputForm({
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   return (
     <form
@@ -28,10 +29,20 @@ function ChatInputForm({
       className="flex gap-3 border-t border-gray-300 bg-gray-50 p-4 sm:p-4"
     >
       <textarea
+        ref={textareaRef}
         name="message"
         placeholder="Type a message..."
         rows={1}
         disabled={disabled || isSubmitting}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault()
+            // Trigger form submission when Enter is pressed without Shift.
+            if (!disabled && !isSubmitting) {
+              formRef.current?.requestSubmit()
+            }
+          }
+        }}
         className="min-h-11 max-h-32 flex-1 resize-none rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed sm:min-h-11"
       />
       <button

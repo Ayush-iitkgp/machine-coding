@@ -93,5 +93,5 @@ async def process_chat_message(
         return await _handle_financial_question(request=request, db=db)
 
     response_text = _PLACEHOLDER_RESPONSE.format(message=request.message)
-    db.add(ChatMessage(message=request.message, response=response_text))
+    # db.add(ChatMessage(message=request.message, response=response_text))
     return ChatResponse(response=response_text)
