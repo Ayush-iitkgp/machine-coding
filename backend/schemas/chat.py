@@ -20,6 +20,7 @@ class FinancialChunkSummary(BaseModel):
 
     id: int
     document_id: str
+    document_name: Optional[str] = None
     section: str
     content: str
 

@@ -3,6 +3,7 @@ import { useRef, useEffect, useState } from 'react'
 export type RetrievedChunk = {
   id: number
   document_id: string
+  document_name?: string | null
   section: string
   content: string
 }
@@ -48,7 +49,7 @@ function MessageBubble({ message }: { message: Message }) {
                   className="rounded-lg border border-white/10 bg-black/30 px-3 py-2"
                 >
                   <div className="mb-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/50">
-                    {chunk.document_id} · {chunk.section}
+                    {(chunk.document_name || chunk.document_id) ?? ''} · {chunk.section}
                   </div>
                   <div className="whitespace-pre-wrap break-words">{chunk.content}</div>
                 </div>

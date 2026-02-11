@@ -14,7 +14,9 @@ function ChatInputForm({
   return (
     <form
       ref={formRef}
-      action={async (formData: FormData) => {
+      onSubmit={async (event) => {
+        event.preventDefault()
+        const formData = new FormData(event.currentTarget)
         const message = (formData.get('message') as string)?.trim() ?? ''
         if (message && !disabled && !isSubmitting) {
           setIsSubmitting(true)

@@ -54,14 +54,15 @@ async def _handle_financial_question(
     )
     db.add(ChatMessage(message=request.message, response=response_text))
     retrieved = [
-            FinancialChunkSummary(
-                id=chunk.id,
-                document_id=chunk.document_id,
-                section=chunk.section,
-                content=chunk.content,
-            )
-            for chunk in used_chunks
-        ]
+        FinancialChunkSummary(
+            id=chunk.id,
+            document_id=chunk.document_id,
+            document_name=chunk.document_name,
+            section=chunk.section,
+            content=chunk.content,
+        )
+        for chunk in used_chunks
+    ]
 
     return ChatResponse(
         response=response_text,

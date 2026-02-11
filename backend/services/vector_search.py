@@ -67,6 +67,7 @@ _next_chunk_id = 1
 async def add_document(
     document_id: str,
     content: str,
+    document_name: str | None = None,
     max_chars_per_chunk: int = 800,
 ) -> int:
     """Add a new document to the vector store by chunking and embedding it.
@@ -113,6 +114,7 @@ async def add_document(
         metadatas.append(
             {
                 "document_id": document_id,
+                "document_name": document_name,
                 "section": f"uploaded_chunk_{idx}",
                 "chunk_id": chunk_id,
             }
@@ -145,6 +147,7 @@ async def search_similar_chunks(
             FinancialChunk(
                 id=int(meta.get("chunk_id")),
                 document_id=str(meta.get("document_id")),
+                document_name=str(meta.get("document_name")) if meta.get("document_name") is not None else None,
                 section=str(meta.get("section")),
                 content=str(content),
             )

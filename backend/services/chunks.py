@@ -8,6 +8,7 @@ class FinancialChunk:
 
     id: int
     document_id: str
+    document_name: str | None
     section: str
     content: str
 

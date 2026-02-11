@@ -8,6 +8,7 @@ type ChatApiError = { detail?: string | { msg?: string }[] }
 type RetrievedChunk = {
   id: number
   document_id: string
+  document_name?: string | null
   section: string
   content: string
 }
@@ -136,12 +137,18 @@ export function ChatApp() {
       if (document_id) {
         setDocumentId(document_id)
       }
+
+      const isLlmError =
+        response.startsWith('Unable to process the question at present') ||
+        response.startsWith('[LLM_ERROR]')
+
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           content: response,
-          retrievedChunks: retrieved_chunks,
+          // Do not show retrieved chunks when the LLM returned an error message.
+          retrievedChunks: isLlmError ? undefined : retrieved_chunks,
         },
       ])
     } catch (err) {

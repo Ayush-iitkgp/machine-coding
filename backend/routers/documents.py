@@ -61,7 +61,11 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentUploadRespons
     text = _extract_text_from_pdf(raw_bytes)
 
     document_id = str(uuid4())
-    chunks = await vector_search.add_document(document_id=document_id, content=text)
+    chunks = await vector_search.add_document(
+        document_id=document_id,
+        content=text,
+        document_name=file.filename,
+    )
 
     if chunks <= 0:
         raise HTTPException(
