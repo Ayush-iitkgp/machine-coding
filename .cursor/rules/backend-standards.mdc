@@ -17,8 +17,14 @@ alwaysApply: false
 - **Lifespan:** Use the modern `lifespan` context manager instead of deprecated `@app.on_event`.
 - **Error Handling:** Use `HTTPException` with specific status codes. Implement custom exception handlers for consistency.
 - **Response Models:** Always define `response_model` in routes to ensure data integrity.
+- **Concurrency:** Prefer `asyncio`-based concurrency (e.g. `asyncio.gather`) for parallel I/O inside `async def` endpoints. Avoid CPU‑bound work in request handlers; offload heavy CPU tasks to background workers (e.g. Celery, RQ) or `concurrent.futures.ThreadPoolExecutor`.
+- **Blocking Calls:** Never call blocking I/O (e.g. `requests`, raw file I/O) directly inside `async def` routes; instead use async libraries (e.g. `httpx.AsyncClient`).
 
 # Directory Structure
 
 - Follow `PEP 8` (snake_case for files and folders).
 - Structure: `routers/`, `schemas/`, `models/`, `services/`.
+
+# Database & Migrations Rule
+- **Automated Sync:** After any change to `backend/models/*.py`, you MUST execute the `@alembic-migration` skill.
+- **Verification:** Do not consider a task "Done" until the migration has been successfully applied via `alembic upgrade head`.

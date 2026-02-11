@@ -2,9 +2,12 @@
 
 @layer base {
   html {
-    @apply min-h-screen;
+    min-height: 100vh;
   }
+
   body {
-    @apply min-h-screen antialiased;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }

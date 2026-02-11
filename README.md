@@ -165,12 +165,33 @@ cd frontend && npm run dev
 | `/health`  | GET    | Health check and database connectivity |
 | `/docs`    | GET    | Interactive API documentation     |
 
-**Example:**
+**Example – general chat:**
 ```bash
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello"}'
 ```
+
+**Example – mocked financial document QA:**
+
+The backend includes a mocked flow that pretends to query a vector database of
+financial document chunks and call an LLM. To trigger this behavior, either:
+
+- Set `mode` to `"financial_qa"`, or
+- Ask a question that includes common financial terms (e.g. "income statement", "balance sheet", "net income").
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "What was the net income reported in the 2024 annual report?",
+    "mode": "financial_qa",
+    "document_id": "2024-annual-report"
+  }'
+```
+
+The response will contain a `[MOCKED_LLM]` prefix and excerpts from a small
+in-memory mock financial document corpus.
 
 ---
 

@@ -21,4 +21,7 @@ async def chat(
             status_code=400,
             detail="Message cannot be empty",
         )
-    return await process_chat_message(message=message, db=db)
+    # Pass the full request through so process_chat_message can decide whether
+    # to run the mocked financial QA flow or the general placeholder response.
+    request.message = message
+    return await process_chat_message(request=request, db=db)

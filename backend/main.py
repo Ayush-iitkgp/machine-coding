@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from database import init_db
-from routers import chat, health
+from routers import chat, health, documents
 
 
 @asynccontextmanager
@@ -40,3 +40,4 @@ async def http_exception_handler(
 
 app.include_router(health.router)
 app.include_router(chat.router)
+app.include_router(documents.router)

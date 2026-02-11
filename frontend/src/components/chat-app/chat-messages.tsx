@@ -1,6 +1,17 @@
 import { useRef, useEffect } from 'react'
 
-export type Message = { role: 'user' | 'assistant'; content: string }
+export type RetrievedChunk = {
+  id: number
+  document_id: string
+  section: string
+  content: string
+}
+
+export type Message = {
+  role: 'user' | 'assistant'
+  content: string
+  retrievedChunks?: RetrievedChunk[]
+}
 
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user'
@@ -13,6 +24,25 @@ function MessageBubble({ message }: { message: Message }) {
       }`}
     >
       <div className="whitespace-pre-wrap break-words">{message.content}</div>
+
+      {!isUser && message.retrievedChunks && message.retrievedChunks.length > 0 && (
+        <div className="mt-3 space-y-2 text-xs text-white/80">
+          <div className="font-semibold uppercase tracking-wide text-[0.65rem] text-white/60">
+            Financial data used
+          </div>
+          {message.retrievedChunks.map((chunk) => (
+            <div
+              key={chunk.id}
+              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2"
+            >
+              <div className="mb-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/50">
+                {chunk.document_id} · {chunk.section}
+              </div>
+              <div className="whitespace-pre-wrap break-words">{chunk.content}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

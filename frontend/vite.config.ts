@@ -10,6 +10,7 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/chat': backendUrl,
+      '/documents': backendUrl,
     },
   },
 })
