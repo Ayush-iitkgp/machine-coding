@@ -48,9 +48,11 @@ function MessageBubble({ message }: { message: Message }) {
                   key={chunk.id}
                   className="rounded-lg border border-white/10 bg-black/30 px-3 py-2"
                 >
-                  <div className="mb-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/50">
-                    {(chunk.document_name || chunk.document_id) ?? ''} · {chunk.section}
-                  </div>
+                  {chunk.document_name && (
+                    <div className="mb-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/50">
+                      {chunk.document_name}
+                    </div>
+                  )}
                   <div className="whitespace-pre-wrap break-words">{chunk.content}</div>
                 </div>
               ))}
