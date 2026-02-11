@@ -4,12 +4,15 @@ Dispatches to provider-specific clients for Llama (Ollama), OpenAI, or Gemini.
 By default, the Llama (Ollama) client is used; override with LLM_PROVIDER.
 """
 from typing import Iterable, List, Tuple
+import logging
 import os
 
 from .chunks import FinancialChunk
 from . import llm_llama_client, llm_openai_client, llm_gemini_client
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "llama").lower()
+
+logger = logging.getLogger(__name__)
 
 
 async def _call_llm(prompt: str) -> str:
@@ -57,12 +60,14 @@ async def answer_question_from_chunks(
     try:
         answer = await _call_llm(prompt)
     except Exception as exc:  # noqa: BLE001
-        answer = (
-            "[LLM_ERROR] Failed to call the LLM API. "
-            f"Reason: {exc!r}\n\n"
-            "Here are the raw excerpts so you can inspect them yourself:\n"
-            f"{chr(10).join(context_lines)}"
+        # Log full details on the backend for debugging and monitoring.
+        logger.exception(
+            "LLM call failed for question %r with %d context chunks",
+            question,
+            len(selected),
         )
+        # Return a generic, user-friendly message to the frontend.
+        answer = "Unable to process the question at present. Please try again later."
 
-    return (answer or "[LLM_ERROR] Empty response from LLM."), selected
+    return (answer or "Unable to process the question at present. Please try again later."), selected
 
