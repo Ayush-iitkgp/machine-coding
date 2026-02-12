@@ -1,6 +1,7 @@
 """Vector search over documents using Chroma with Ollama embeddings."""
-from typing import List, Optional
+import logging
 import os
+from typing import List, Optional
 
 import chromadb
 from chromadb.config import Settings
@@ -9,9 +10,17 @@ import httpx
 
 from .chunks import FinancialChunk
 
+logger = logging.getLogger(__name__)
+
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
-CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./chroma_data")
+
+# Default: store under backend/chroma_data so path is independent of process cwd.
+_DEFAULT_CHROMA_PATH = os.path.join(os.path.dirname(__file__), "..", "chroma_data")
+CHROMA_DB_PATH = os.path.abspath(os.getenv("CHROMA_DB_PATH", _DEFAULT_CHROMA_PATH))
+
+CHUNK_MAX_CHARS = int(os.getenv("CHUNK_MAX_CHARS", "800"))
+CHUNK_OVERLAP_CHARS = int(os.getenv("CHUNK_OVERLAP_CHARS", "50"))
 
 
 class OllamaEmbeddingFunction(EmbeddingFunction):
@@ -69,13 +78,17 @@ async def add_document(
     content: str,
     document_name: str | None = None,
     max_chars_per_chunk: int = 800,
+    overlap_chars: int = 100,
 ) -> int:
     """Add a new document to the vector store by chunking and embedding it.
 
     Args:
         document_id: Logical identifier for the uploaded document.
         content: Raw text content of the document.
+        document_name: Optional display name for the document.
         max_chars_per_chunk: Maximum characters per chunk before splitting.
+        overlap_chars: Number of characters to overlap between consecutive chunks.
+            Overlap helps preserve context at chunk boundaries (e.g. split sentences).
 
     Returns:
         Number of chunks added.
@@ -84,17 +97,30 @@ async def add_document(
     if not text:
         return 0
 
-    # Simple chunking: split on double newlines, then hard-wrap long paragraphs.
+    overlap_chars = min(max(0, overlap_chars), max_chars_per_chunk // 2)
+    step = max_chars_per_chunk - overlap_chars
+
+    def _split_with_overlap(block: str) -> list[str]:
+        """Split a block into overlapping chunks."""
+        if len(block) <= max_chars_per_chunk:
+            return [block] if block else []
+        result: list[str] = []
+        start = 0
+        while start < len(block):
+            chunk = block[start : start + max_chars_per_chunk]
+            if chunk.strip():
+                result.append(chunk.strip())
+            start += step
+        return result
+
     chunks: list[str] = []
     for block in text.split("\n\n"):
         block = block.strip()
         if not block:
             continue
-        while len(block) > max_chars_per_chunk:
-            chunk, block = block[:max_chars_per_chunk], block[max_chars_per_chunk:]
-            chunks.append(chunk.strip())
-        if block:
-            chunks.append(block)
+        for chunk_text in _split_with_overlap(block):
+            if chunk_text:
+                chunks.append(chunk_text)
 
     if not chunks:
         return 0
@@ -151,6 +177,23 @@ async def search_similar_chunks(
                 section=str(meta.get("section")),
                 content=str(content),
             )
+        )
+
+    logger.info(
+        "Vector search completed: query=%r, document_id=%s, limit=%d, num_results=%d",
+        query,
+        document_id,
+        limit,
+        len(chunks),
+    )
+    for i, chunk in enumerate(chunks, start=1):
+        logger.debug(
+            "Chunk[%d] id=%s doc=%s section=%s content_preview=%s",
+            i,
+            chunk.id,
+            chunk.document_id,
+            chunk.section,
+            (chunk.content[:80] + "..." if len(chunk.content) > 80 else chunk.content),
         )
 
     return chunks

@@ -4,6 +4,13 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 
+class HistoryMessage(BaseModel):
+    """A single message in the conversation history."""
+
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class ChatRequest(BaseModel):
     """Request body for chat endpoint."""
 
@@ -13,6 +20,8 @@ class ChatRequest(BaseModel):
     # Mode hint so the backend can decide how to handle the message.
     # "financial_qa" will trigger the mocked vector search + LLM flow.
     mode: Optional[Literal["general", "financial_qa"]] = None
+    # Conversation history for context (previous user and assistant messages).
+    history: Optional[list[HistoryMessage]] = None
 
 
 class FinancialChunkSummary(BaseModel):

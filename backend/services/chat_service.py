@@ -47,10 +47,15 @@ async def _handle_financial_question(
         document_id=request.document_id,
         limit=5,
     )
+    history_tuples: list[tuple[str, str]] | None = None
+    if request.history:
+        history_tuples = [(m.role, m.content) for m in request.history]
+
     response_text, used_chunks = await answer_question_from_chunks(
         question=request.message,
         chunks=chunks,
         max_chunks=3,
+        history=history_tuples,
     )
     db.add(ChatMessage(message=request.message, response=response_text))
     retrieved = [

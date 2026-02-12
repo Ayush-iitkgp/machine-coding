@@ -43,7 +43,10 @@ async function uploadDocument(file: File): Promise<UploadResponse> {
 
 async function sendChatMessage(
   message: string,
-  options?: { documentId?: string | null },
+  options?: {
+    documentId?: string | null
+    history?: { role: 'user' | 'assistant'; content: string }[]
+  },
 ): Promise<ChatApiResponse> {
   const res = await fetch('/chat', {
     method: 'POST',
@@ -51,6 +54,7 @@ async function sendChatMessage(
     body: JSON.stringify({
       message,
       document_id: options?.documentId ?? undefined,
+      history: options?.history ?? undefined,
     }),
   })
   const data = (await res.json()) as ChatApiError | ChatApiResponse
@@ -131,8 +135,10 @@ export function ChatApp() {
     setLoading(true)
 
     try {
+      const history = messages.map((m) => ({ role: m.role, content: m.content }))
       const { response, retrieved_chunks, document_id } = await sendChatMessage(text, {
         documentId,
+        history,
       })
       if (document_id) {
         setDocumentId(document_id)

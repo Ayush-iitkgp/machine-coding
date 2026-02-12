@@ -1,6 +1,17 @@
 """FastAPI application - Chat backend for Odin AI."""
+import logging
+import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Request
+
+# Configure logging (set LOG_LEVEL=DEBUG for verbose output)
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, log_level, logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 

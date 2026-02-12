@@ -16,3 +16,4 @@ frontend/node_modules/
 .DS_Store
 
 chroma_data/
+backend/chroma_data/

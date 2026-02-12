@@ -25,12 +25,24 @@ async def _call_llm(prompt: str) -> str:
     return await llm_llama_client.generate_answer(prompt)
 
 
+def _format_history(history: list[tuple[str, str]] | None) -> str:
+    """Format conversation history for inclusion in the prompt."""
+    if not history:
+        return ""
+    lines: List[str] = []
+    for role, content in history:
+        prefix = "User" if role == "user" else "Assistant"
+        lines.append(f"{prefix}: {content}")
+    return "Previous conversation:\n" + "\n".join(lines) + "\n\n"
+
+
 async def answer_question_from_chunks(
     question: str,
     chunks: Iterable[FinancialChunk],
     max_chunks: int = 3,
+    history: list[tuple[str, str]] | None = None,
 ) -> Tuple[str, List[FinancialChunk]]:
-    """Build a prompt from the question and chunks and ask the configured LLM."""
+    """Build a prompt from the question, chunks, and optional history; ask the configured LLM."""
     selected: List[FinancialChunk] = list(chunks)[:max_chunks]
 
     if not selected:
@@ -47,15 +59,25 @@ async def answer_question_from_chunks(
             f"{idx}. [doc={chunk.document_id} section={chunk.section}] {chunk.content}"
         )
 
+    history_block = _format_history(history)
+
     prompt = (
         "You are a financial analysis assistant. Answer the user's question "
         "strictly based on the provided document excerpts.\n\n"
-        "Question:\n"
+        f"{history_block}"
+        "Current question:\n"
         f"{question}\n\n"
         "Document excerpts:\n"
         f"{chr(10).join(context_lines)}\n\n"
         "Answer in clear, concise language:"
     )
+
+    logger.info(
+        "Sending prompt to LLM: question=%r, num_chunks=%d",
+        question,
+        len(selected),
+    )
+    logger.debug("Full prompt:\n%s", prompt)
 
     try:
         answer = await _call_llm(prompt)

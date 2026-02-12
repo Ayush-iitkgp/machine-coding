@@ -23,7 +23,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - ./chroma_data:/app/chroma_data
+      - ./backend/chroma_data:/app/chroma_data
     environment:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql+asyncpg://odin:odin@db:5432/odin_ai

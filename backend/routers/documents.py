@@ -1,41 +1,75 @@
 """Document upload and indexing routes."""
-from uuid import uuid4
 from io import BytesIO
+from uuid import uuid4
 
+import pdfplumber
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from starlette import status
 
 from schemas import DocumentUploadResponse
 from services import vector_search
-from pypdf import PdfReader
-
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
+def _ensure_utf8(text: str) -> str:
+    """Normalize text to valid UTF-8, replacing unencodable characters."""
+    return text.encode("utf-8", errors="replace").decode("utf-8")
+
+
+def _table_to_text(table: list[list]) -> str:
+    """Format a table (list of rows) as readable text with pipe separators."""
+    if not table:
+        return ""
+    lines: list[str] = []
+    for row in table:
+        cells = [str(c).strip() if c is not None else "" for c in row]
+        lines.append(" | ".join(cells))
+    return "\n".join(lines)
+
+
 def _extract_text_from_pdf(data: bytes) -> str:
-    """Extract text from a PDF byte stream using pypdf."""
+    """Extract text from a PDF byte stream using pdfplumber.
+
+    Uses pdfplumber's table detection to preserve table structure; falls back
+    to plain text extraction for non-table content.
+    """
     try:
-        reader = PdfReader(BytesIO(data))
+        pdf = pdfplumber.open(BytesIO(data))
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to read PDF file: {exc!r}",
         ) from exc
 
-    texts: list[str] = []
-    for page in reader.pages:
-        page_text = page.extract_text() or ""
-        if page_text:
-            texts.append(page_text)
+    sections: list[str] = []
+    with pdf:
+        for i, page in enumerate(pdf.pages):
+            page_sections: list[str] = []
 
-    combined = "\n".join(texts).strip()
+            # Extract tables first (preserves row/column structure)
+            tables = page.extract_tables()
+            if tables:
+                for j, table in enumerate(tables):
+                    table_text = _table_to_text(table)
+                    if table_text.strip():
+                        page_sections.append(f"[Table {j + 1}]\n{table_text}")
+
+            # Extract remaining text (non-table content)
+            page_text = page.extract_text()
+            if page_text and page_text.strip():
+                page_sections.append(page_text.strip())
+
+            if page_sections:
+                sections.append("\n\n".join(page_sections))
+
+    combined = "\n\n".join(sections).strip()
     if not combined:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded PDF contains no extractable text.",
         )
-    return combined
+    return _ensure_utf8(combined)
 
 
 @router.post(
@@ -65,6 +99,8 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentUploadRespons
         document_id=document_id,
         content=text,
         document_name=file.filename,
+        max_chars_per_chunk=vector_search.CHUNK_MAX_CHARS,
+        overlap_chars=vector_search.CHUNK_OVERLAP_CHARS,
     )
 
     if chunks <= 0:
