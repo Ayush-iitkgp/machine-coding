@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
+import { MessageContent } from './message-content'
 
 export type RetrievedChunk = {
   id: number
@@ -27,7 +28,7 @@ function MessageBubble({ message }: { message: Message }) {
           : 'self-start border border-white/10 bg-white/5'
       }`}
     >
-      <div className="whitespace-pre-wrap break-words">{message.content}</div>
+      <MessageContent content={message.content} />
 
       {hasChunks && (
         <div className="mt-3 text-xs text-white/80">
@@ -46,14 +47,14 @@ function MessageBubble({ message }: { message: Message }) {
               {message.retrievedChunks!.map((chunk) => (
                 <div
                   key={chunk.id}
-                  className="rounded-lg border border-white/10 bg-black/30 px-3 py-2"
+                  className="overflow-x-auto rounded-lg border border-white/10 bg-black/30 px-3 py-2"
                 >
                   {chunk.document_name && (
                     <div className="mb-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/50">
                       {chunk.document_name}
                     </div>
                   )}
-                  <div className="whitespace-pre-wrap break-words">{chunk.content}</div>
+                  <MessageContent content={chunk.content} compact />
                 </div>
               ))}
             </div>

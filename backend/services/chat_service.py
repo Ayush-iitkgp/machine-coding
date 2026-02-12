@@ -54,7 +54,7 @@ async def _handle_financial_question(
     response_text, used_chunks = await answer_question_from_chunks(
         question=request.message,
         chunks=chunks,
-        max_chunks=3,
+        max_chunks=5,
         history=history_tuples,
     )
     db.add(ChatMessage(message=request.message, response=response_text))

@@ -64,12 +64,20 @@ async def answer_question_from_chunks(
     prompt = (
         "You are a financial analysis assistant. Answer the user's question "
         "strictly based on the provided document excerpts.\n\n"
+        "Important rules:\n"
+        "- Use ONLY the data from the provided document excerpts. Do not use external knowledge.\n"
+        "- Do NOT perform any calculations. Report figures exactly as they appear in the document.\n"
+        "- Extract and state exact figures (numbers, amounts, percentages) from the document.\n"
+        "- Do NOT use placeholders like $<, $<amount>, or similar. If you find a figure, cite it exactly (e.g. $402.8 billion, 15%).\n"
+        "- If the document does not contain the requested information, say so clearly. Do not invent figures.\n"
+        "- For revenue, income, or financial metrics, include the exact value and unit (millions, billions, USD, etc.) as stated in the document.\n"
+        "- Return plain text only. Do NOT use markdown (no **, ##, *, -, bullet points, or code blocks).\n\n"
         f"{history_block}"
         "Current question:\n"
         f"{question}\n\n"
         "Document excerpts:\n"
         f"{chr(10).join(context_lines)}\n\n"
-        "Answer in clear, concise language:"
+        "Answer with the exact figures from the document. Be concise but precise:"
     )
 
     logger.info(

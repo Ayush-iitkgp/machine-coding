@@ -20,7 +20,11 @@ _DEFAULT_CHROMA_PATH = os.path.join(os.path.dirname(__file__), "..", "chroma_dat
 CHROMA_DB_PATH = os.path.abspath(os.getenv("CHROMA_DB_PATH", _DEFAULT_CHROMA_PATH))
 
 CHUNK_MAX_CHARS = int(os.getenv("CHUNK_MAX_CHARS", "800"))
-CHUNK_OVERLAP_CHARS = int(os.getenv("CHUNK_OVERLAP_CHARS", "50"))
+CHUNK_OVERLAP_CHARS = int(os.getenv("CHUNK_OVERLAP_CHARS", "100"))
+
+# Minimum similarity (0-1) to include a chunk. Uses cosine: similarity = 1 - distance.
+# Only chunks with similarity >= this threshold are returned.
+SIMILARITY_THRESHOLD = float(os.getenv("VECTOR_SIMILARITY_THRESHOLD", "0.2"))
 
 
 class OllamaEmbeddingFunction(EmbeddingFunction):
@@ -150,25 +154,65 @@ async def add_document(
     return len(chunks)
 
 
+def delete_document(document_id: str) -> int:
+    """Delete all chunks for a document. Returns number of chunks removed."""
+    try:
+        result = _collection.get(
+            where={"document_id": document_id},
+            include=["metadatas"],
+        )
+        ids = result.get("ids", [])
+        if ids:
+            _collection.delete(ids=ids)
+            logger.info("Deleted %d chunks for document_id=%s", len(ids), document_id)
+        return len(ids)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to delete document %s: %s", document_id, exc)
+        return 0
+
+
 async def search_similar_chunks(
     query: str,
     document_id: Optional[str] = None,
     limit: int = 5,
 ) -> List[FinancialChunk]:
-    """Return the top-N chunks that best match the query using Chroma + Gemini."""
+    """Return the top-N chunks that best match the query. Only returns chunks with similarity >= 70%."""
     where = {"document_id": document_id} if document_id is not None else None
 
+    # Query more candidates to filter by threshold, then trim to limit
     results = _collection.query(
         query_texts=[query],
-        n_results=limit,
+        n_results=min(limit * 4, 50),  # fetch extra for threshold filtering
         where=where,
+        include=["metadatas", "documents", "distances"],
     )
 
     metadatas = results.get("metadatas", [[]])[0]
     documents = results.get("documents", [[]])[0]
+    distances = results.get("distances", [[]])[0]
+
+    # If Chroma didn't return distances (e.g. older version), include all results
+    use_threshold = len(distances) == len(metadatas)
 
     chunks: List[FinancialChunk] = []
-    for meta, content in zip(metadatas, documents):
+    for i, (meta, content) in enumerate(zip(metadatas, documents)):
+        if use_threshold:
+            distance = float(distances[i])
+            # Cosine: similarity = 1 - distance (distance in [0, 2]).
+            # L2 (Chroma default): for normalized vectors, cos_sim ≈ 1 - d²/2.
+            if distance <= 1.0:
+                similarity = 1.0 - distance  # cosine or small L2
+            else:
+                similarity = max(0.0, 1.0 - distance * distance / 2.0)  # L2 normalized
+            if similarity < SIMILARITY_THRESHOLD:
+                logger.debug(
+                    "Excluded chunk id=%s similarity=%.2f (threshold=%.2f)",
+                    meta.get("chunk_id"),
+                    similarity,
+                    SIMILARITY_THRESHOLD,
+                )
+                continue
+
         chunks.append(
             FinancialChunk(
                 id=int(meta.get("chunk_id")),
@@ -178,6 +222,10 @@ async def search_similar_chunks(
                 content=str(content),
             )
         )
+        if len(chunks) >= limit:
+            break
+
+    chunks = chunks[:limit]
 
     logger.info(
         "Vector search completed: query=%r, document_id=%s, limit=%d, num_results=%d",
@@ -187,13 +235,14 @@ async def search_similar_chunks(
         len(chunks),
     )
     for i, chunk in enumerate(chunks, start=1):
-        logger.debug(
-            "Chunk[%d] id=%s doc=%s section=%s content_preview=%s",
+        preview = chunk.content[:300] + "..." if len(chunk.content) > 300 else chunk.content
+        logger.info(
+            "Matching chunk[%d] id=%s doc=%s section=%s content=%s",
             i,
             chunk.id,
             chunk.document_id,
             chunk.section,
-            (chunk.content[:80] + "..." if len(chunk.content) > 80 else chunk.content),
+            preview,
         )
 
     return chunks

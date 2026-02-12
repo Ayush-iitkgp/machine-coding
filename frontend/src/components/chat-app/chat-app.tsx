@@ -24,6 +24,13 @@ type UploadResponse = {
   chunks: number
 }
 
+async function deleteDocument(documentId: string): Promise<void> {
+  const res = await fetch(`/documents/${documentId}`, { method: 'DELETE' })
+  if (!res.ok && res.status !== 404) {
+    throw new Error('Failed to delete document')
+  }
+}
+
 async function uploadDocument(file: File): Promise<UploadResponse> {
   const formData = new FormData()
   formData.append('file', file)
@@ -95,6 +102,9 @@ export function ChatApp() {
       void (async () => {
         try {
           setUploading(true)
+          if (documentId) {
+            await deleteDocument(documentId)
+          }
           const uploaded = await uploadDocument(file)
           setDocumentId(uploaded.document_id)
           setSelectedFileName(file.name)
