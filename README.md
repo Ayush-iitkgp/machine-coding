@@ -1,4 +1,4 @@
-# Odin AI
+# LedgerLens
 
 A chat application with a React frontend and FastAPI backend.
 
